@@ -1,25 +1,158 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template.Rmd"
+author: "Emily"
+date: "7/29/2019"
+output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-## Loading and preprocessing the data
+## R Markdown
+
+This is an RMarkdown document for Reproducible Research Course Project 1
+First step is to load packages
+
+```{r}
+library(readr)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(VIM)
+library(mice)
+set.seed(1010)
+```
+
+##Question 1: Load data/clean dates
+```{r}
+activity <- read_csv("activity.csv")
+str(activity)
+activity$date <- as.Date(activity$date)
+```
+##Question 2: Total steps taken per day
+###Total Steps taken per day
+```{r}
+stepstotal <- aggregate(steps~date,activity,sum)
+````
+###Histogram of average steps per day
+```{r}
+
+hist(stepstotal$steps,xlab="Total steps",main="Total number of daily steps")
+
+```
+### Average Steps without missing
+```{r}
+stepsaverage <- mean(stepstotal$steps, na.rm=TRUE)
+stepsaverage
+````
+### Median Steps without missing
+```{r}
+stepsmedian <- median(stepstotal$steps, na.rm=TRUE)
+stepsmedian
+```
+
+##Question3: Average Daily Activity Pattern
+###aggregating steps by interval and getting mean
+```{r}
+stepsinterval <- aggregate(steps~interval,activity,mean)
+```
+
+###Prep dataset for merging
+```{r}
+names(stepsinterval)[names(stepsinterval) == 'steps'] <- 'AverageSteps'
+```
+
+###time series plot of 5-minute interval and average steps taken
+```{r}
+plot(stepsinterval,type="l",xlab="Interval [5-min increments]",ylab="Average number of steps",main="Average number of steps per interval")
+```
+
+###what 5 minute interval contains the max steps?
+```{r}
+maxsteps <- stepsinterval$interval[which.max(stepsinterval$AverageSteps)]
+maxsteps
+```
+##Question 4: Missing Values
+###Calculate and report missing values
+```{r}
+missing <- sum(is.na(activity))
+```
+
+###Strategy for missing values... Going to impute
+```{r}
+imputing = merge(activity, stepsinterval, by="interval")
+```
+###Creating new dataset merged with imputed data
+```{r}
+imputing$steps[is.na(imputing$steps)] = imputing$AverageSteps[is.na(imputing$steps)]
+```
+
+###make a histogram
+```{r}
+newactivity <- aggregate(steps~interval, imputing,sum)
+
+hist(newactivity$steps,xlab="Total steps",main="Total number of daily steps (Imputed)")
+```
+###Calculating mean of imputed data
+```{r}
+imputedmean <- mean(newactivity$steps, na.rm=TRUE)
+imputedmean
+```
+
+###Calculating median of imputed data
+```{r}
+imputedmedian <- median(newactivity$steps, na.rm=TRUE)
+imputedmedian
+```
+###difference between real and imputed means/medians
+```{r}
+meandiff <- imputedmean - stepsaverage
+meandiff
+```
+
+
+```{r}
+mediandiff <- imputedmedian - stepsmedian
+mediandiff
+```
+###impact of missing values: Using imputed data brings down the average steps when compared with
+###excluding the missing data
+
+
+##Question 5: Difference on weekends?
+###Create factor variable:weekend/weekday
+```{r}
+daytype <- function(date) {
+    if (weekdays(date) %in% c("Saturday", "Sunday")) {
+        "weekend"
+    } else {
+        "weekday"
+    }
+}
+```
+###apply to data
+```{r}
+imputing$daytype <- as.factor(sapply(imputing$date, daytype))
+```
+###make panel plot
+```{r}
+library(plyr)
+imputedsteptype <- ddply(imputing,.(interval,daytype),summarize,stepsavg=mean(steps))
+library(lattice)
+xyplot(stepsavg~interval|daytype,data=imputedsteptype,type="l",layout = c(1,2),
+       main="Average steps (imputed) per interval and type of day",
+       ylab="Average number of steps",xlab="Interval [5-min increments]")
+```
 
 
 
-## What is mean total number of steps taken per day?
 
 
 
-## What is the average daily activity pattern?
 
 
 
-## Imputing missing values
 
 
 
-## Are there differences in activity patterns between weekdays and weekends?
